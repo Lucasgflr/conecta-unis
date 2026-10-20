@@ -80,17 +80,26 @@ def bootstrap(db):
                 email_verified=True, institutional_verified=True))
             db.commit()
             print(f'Conta administrativa criada: {email}', flush=True)
-    if os.getenv('DEMO_SEED', 'false').lower() == 'true':
-    if APP_ENV != 'development':
-        if os.getenv('DEMO_ALLOW_PUBLIC', 'false').lower() != 'true':
-            raise RuntimeError('Demonstração pública não autorizada.')
+    demo_enabled = os.getenv('DEMO_SEED', 'false').strip().lower() == 'true'
+    demo_password = os.getenv('DEMO_PASSWORD', '')
+    if demo_enabled:
+        if APP_ENV == 'production':
+            if os.getenv('DEMO_ALLOW_PUBLIC', 'false').strip().lower() != 'true':
+                raise RuntimeError('Defina DEMO_ALLOW_PUBLIC=true para habilitar dados de teste em produção.')
+            if not password_ok(demo_password) or demo_password == 'Teste@12345':
+                raise RuntimeError('Defina DEMO_PASSWORD forte (10 a 128 caracteres), diferente da senha padrão.')
+            if demo_password == os.getenv('ADMIN_PASSWORD', ''):
+                raise RuntimeError('DEMO_PASSWORD deve ser diferente de ADMIN_PASSWORD.')
+        seed_demo(db, demo_password or 'Teste@12345')
+    elif os.getenv('DEMO_DISABLE_ACCOUNTS', 'false').strip().lower() == 'true':
+        # Suspende as contas de demonstração, sem apagar dados históricos.
+        demo_emails = ('aluna@demo.test', 'egresso@demo.test', 'professor@demo.test',
+                       'empresa@demo.test', 'admin@demo.test')
+        for account in db.scalars(select(User).where(User.email.in_(demo_emails))):
+            account.status = 'suspended'
+        db.commit()
 
-        if not password_ok(os.getenv('DEMO_PASSWORD', '')):
-            raise RuntimeError('Defina uma senha de demonstração forte.')
-
-    seed_demo(db)
-
-def seed_demo(db):
+def seed_demo(db, demo_password: str = 'Teste@12345'):
     demo = [
         dict(name='Marina Oliveira', email='aluna@demo.test', role='student', course='Administração',
              city='São Lourenço', period='6º período', skills='Excel, Finanças, Atendimento, Power BI',
@@ -106,10 +115,16 @@ def seed_demo(db):
         dict(name='Coordenação de Carreiras', email='admin@demo.test', role='admin'),
     ]
     for record in demo:
-        if not db.scalar(select(User).where(User.email == record['email'])):
-            db.add(User(**record, password_hash=hash_password(
-    os.getenv('DEMO_PASSWORD', 'Teste@12345')
-),
+        existing = db.scalar(select(User).where(User.email == record['email']))
+        if existing:
+            # Reativa somente contas fictícias e sincroniza a senha temporária.
+            existing.status = 'active'
+            existing.email_verified = True
+            existing.institutional_verified = True
+            if not verify_password(existing.password_hash, demo_password):
+                existing.password_hash = hash_password(demo_password)
+        else:
+            db.add(User(**record, password_hash=hash_password(demo_password),
                 status='active', email_verified=True, institutional_verified=True))
     db.commit()
     company = db.scalar(select(User).where(User.email == 'empresa@demo.test'))
