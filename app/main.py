@@ -81,9 +81,14 @@ def bootstrap(db):
             db.commit()
             print(f'Conta administrativa criada: {email}', flush=True)
     if os.getenv('DEMO_SEED', 'false').lower() == 'true':
-        if APP_ENV != 'development':
-            raise RuntimeError('DEMO_SEED só pode ser usado em ambiente de desenvolvimento.')
-        seed_demo(db)
+    if APP_ENV != 'development':
+        if os.getenv('DEMO_ALLOW_PUBLIC', 'false').lower() != 'true':
+            raise RuntimeError('Demonstração pública não autorizada.')
+
+        if not password_ok(os.getenv('DEMO_PASSWORD', '')):
+            raise RuntimeError('Defina uma senha de demonstração forte.')
+
+    seed_demo(db)
 
 def seed_demo(db):
     demo = [
@@ -102,7 +107,9 @@ def seed_demo(db):
     ]
     for record in demo:
         if not db.scalar(select(User).where(User.email == record['email'])):
-            db.add(User(**record, password_hash=hash_password('Teste@12345'),
+            db.add(User(**record, password_hash=hash_password(
+    os.getenv('DEMO_PASSWORD', 'Teste@12345')
+),
                 status='active', email_verified=True, institutional_verified=True))
     db.commit()
     company = db.scalar(select(User).where(User.email == 'empresa@demo.test'))
