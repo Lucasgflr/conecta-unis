@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142f52">
+  <meta name="description" content="Conecta Unis — oportunidades de carreira para conectar a comunidade acadêmica às empresas da região.">
+  <title>{% block title %}Conecta Unis{% endblock %} · Conecta Unis</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+  <script src="{{ url_for('static', path='/app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand" aria-label="Conecta Unis, página inicial"><span class="brand-mark" aria-hidden="true">C<span class="brand-mark-dot">•</span></span><span class="brand-text">conecta<span>unis</span><small>CARREIRAS & OPORTUNIDADES</small></span></a>
+      <nav id="main-nav" class="main-nav" aria-label="Navegação principal">
+        <a href="/vagas" class="nav-link">Explorar vagas</a>
+        {% if user %}
+        <a href="/painel" class="nav-link">Meu painel</a>
+        {% if user.role == 'company' %}<a href="/empresa/talentos" class="nav-link">Talentos</a>{% endif %}
+        {% if user.role in ['student','alumni','company'] %}<a href="/mensagens" class="nav-link">Mensagens</a>{% endif %}
+        <a href="/perfil" class="nav-link">Meu perfil</a>
+        <form method="post" action="/sair" class="nav-form"><input type="hidden" name="_csrf" value="{{ csrf }}"><button type="submit" class="nav-logout">Sair <span aria-hidden="true">↗</span></button></form>
+        {% else %}
+        <a href="/entrar" class="nav-link">Entrar</a>
+        <a href="/cadastrar" class="btn btn-primary nav-signup">Criar conta <span aria-hidden="true">↗</span></a>
+        {% endif %}
+      </nav>
+      <button type="button" id="menu-toggle" class="menu-toggle" aria-label="Abrir menu de navegação" aria-expanded="false" aria-controls="main-nav">☰</button>
+    </div>
+  </header>
+  <main id="conteudo">{% if flash %}<div class="container"><div class="alert alert-{{ flash.kind }}" role="status">{{ flash.msg }}</div></div>{% endif %}{% block content %}{% endblock %}</main>
+  <footer class="site-footer"><div class="container footer-grid"><div><a href="/" class="footer-brand">conecta<span>unis</span></a><p>Conectando o seu potencial a novas oportunidades.</p><small>Projeto acadêmico · Protótipo funcional para validação</small></div><div><strong>Plataforma</strong><a href="/vagas">Oportunidades</a><a href="/cadastrar">Cadastre-se</a><a href="/privacidade">Privacidade e termos</a></div><div><strong>Sobre o projeto</strong><p>Uma iniciativa acadêmica para aproximar estudantes, egressos e empresas.</p><span class="footer-note">Identidade visual provisória, sujeita à aprovação.</span></div></div><div class="container footer-bottom">© {{ today().year }} Conecta Unis · Ambiente de demonstração</div></footer>
+</body>
+</html>
